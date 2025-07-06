@@ -29,7 +29,7 @@ This was inspired by following Reddit posts:
 1. **Run the script:**
 
     ```bash
-    python ps2_sms_converter.py
+    python sms_video_converter.py
     ```
 
 2. Follow the interactive prompts:
