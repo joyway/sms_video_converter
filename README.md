@@ -8,8 +8,6 @@ This was inspired by following Reddit posts:
 - [How to convert videos to play on SMS (Simple Media System) [Tutorial]](https://www.reddit.com/r/ps2homebrew/comments/19aptns/how_to_convert_videos_to_play_on_sms_simple_media/)
 
 
----
-
 ## ✨ Features
 
 - 🔍 Automatically detects video resolution and internal subtitle tracks
@@ -19,14 +17,12 @@ This was inspired by following Reddit posts:
   - External (`.srt` / `.ass`) auto-detected from filename
 - 📈 Displays live conversion progress
 
----
 
 ## ⚙️ Requirements
 
 - Python 3.6+
 - [`ffmpeg`](https://ffmpeg.org/) and `ffprobe` must be installed and available in your system's PATH
 
----
 
 ## 🧑‍💻 Usage
 
@@ -48,14 +44,12 @@ This was inspired by following Reddit posts:
     - Decide whether to overwrite existing files (yes/no)
     - Wait patiently or impatiently (you do you)
 
----
 
 ## 📁 Supported Formats
 
 - Input Video Extensions: `.mkv`, `.mp4`, `.avi`, `.rmvb`, `.rm`, `.mov`, `.flv`, `.mpg`, `.mpeg`, `.wmv`
 - External Subtitle Extensions: `.srt`, `.ass`
 
----
 
 ## 📦 Output Details
 
@@ -67,7 +61,6 @@ This was inspired by following Reddit posts:
     - Video: DviX (1000k - 9000k)
     - Audio: MP3Lame (192k)
 
----
 
 ## 📝 Example Output
 
@@ -96,7 +89,6 @@ y
  2/3: Converting myvideo.S01E02.mkv... 42%
  ```
 
----
 
 ## ❗ Notes
 - In my testing, a video bitrate of 2000–3000 kbps strikes a good balance between picture quality and smooth playback when playing from USB devices.
