@@ -6,10 +6,10 @@ import shutil
 from pathlib import Path
 from subprocess import Popen, PIPE
 
-VERSION = '1.0'
+VERSION = '1.0.1'
 WELCOME_MSG = f'## Welcome to SMS Video Converter v{VERSION}! ##'
 VIDEO_EXTS = ('.mkv', '.mp4', '.avi', '.rmvb', '.rm', '.mov', '.flv', '.mpg', '.mpeg', '.wmv')
-SUBTITLE_EXTS = ('.ass', '.srt')
+SUBTITLE_EXTS = ('.ass', '.ssa', '.srt')
 RESOLUTION_4BY3 = '640x480'
 RESOLUTION_16BY9 = '854x480'
 VIDEO_BITRATE_RANGE = [1000, 9000]
