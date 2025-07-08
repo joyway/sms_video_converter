@@ -16,6 +16,81 @@ VIDEO_BITRATE_RANGE = [1000, 9000]
 AUDIO_BITRATE = '192k'
 
 
+def _prompt_input(prompt, validate_func):
+    """
+    Interact with the user to collect and validate user input.
+
+    Args:
+        prompt (str): The message to be displayed to the user.
+        validate_func (function): The function to validate the input, should return True when it's valid.
+
+    Raises:
+        Exception: When user input is invalid.
+
+    Returns:
+        str: The user input.
+    """
+    while True:
+        user_input = str(input(f'# {prompt}\n')).strip()
+        try:
+            validated_input = validate_func(user_input)
+            if validated_input:
+                break
+            else:
+                raise Exception(f'Invalid input: {user_input}')
+        except Exception as e:
+            print(f'# {e}')
+    return user_input
+
+def _prompt_yes_no(prompt, default=True):
+    """
+    Interact with the user to choose yes and no.
+
+    Args:
+        prompt (str): The message to be displayed to the user.
+        default (bool, optional): Default to yes(True) or no(False) when user hits return without typing anything. Defaults to True.
+
+    Returns:
+        bool: yes(True) or no(False).
+    """
+    result = default
+    prompt += ' (Y/n)' if default else ' (y/N)'
+    while True:
+        user_input = str(input(f'# {prompt}\n'))
+        if not user_input:
+            break
+        elif user_input.strip().lower() == 'y':
+            result = True
+            break
+        elif user_input.strip().lower() == 'n':
+            result = False
+            break
+        else:
+            print('# Invalid input!')
+    return result
+
+def _prompt_choice(prompt, options):
+    """
+    Interact with the user to choose from a list of options.
+
+    Args:
+        prompt (str): The message to be displayed to the user.
+        options (list): The list of options.
+
+    Returns:
+        int: The index of the chosen option.
+    """
+    while True:
+        options_text = ''
+        for i, option in enumerate(options):
+            options_text += f'\n  {i + 1}. {option}'
+        user_input = str(input(f'# {prompt}{options_text} \n'))
+        try:
+            chosen_index = int(user_input.strip())
+            return options[chosen_index - 1]
+        except:
+            print('# Invalid input!')
+
 def get_options():
     """
     Interacts with the user to collect preferences.
@@ -24,71 +99,36 @@ def get_options():
         tuple: Options for bitrate, video cropping, subtitle burning and overwrite existing files
     """
     # What's the target video bitrate?
-    should_crop = False
-    while True:
-        user_input_bitrate = str(input('# Please set the video bitrate, numbers only: (1000-9000 kbps)\n'))
-        try:
-            v_bitrate = int(user_input_bitrate.strip())
-            if VIDEO_BITRATE_RANGE[0] <= v_bitrate <= VIDEO_BITRATE_RANGE[1]:
-                v_bitrate = f'{v_bitrate}k'
-                break
-            else:
-                raise Exception('bitrate must be between 1000-9000')
-        except:
-            print('# Invalid input!')
+    validate_vbitrate = lambda x: VIDEO_BITRATE_RANGE[0] <= int(x) <= VIDEO_BITRATE_RANGE[1]
+    v_bitrate = _prompt_input(
+        'Set the video bitrate, numbers only: (1000-9000 kbps)',
+        validate_vbitrate
+        )
+    v_bitrate = f'{v_bitrate}k'
+
     # Should we crop the video to 4 by 3?
-    should_crop = False
-    while True:
-        user_input_crop = str(input('# Crop the widescreen video to 4:3? (y/N)\n'))
-        if user_input_crop.strip().lower() == 'y':
-            should_crop = True
-            break
-        elif user_input_crop.strip().lower() in ('', 'n'):
-            break
-        else:
-            print('# Invalid input!')
+    should_crop = _prompt_yes_no('Crop the widescreen video to 4:3?', default=False)
+
     # Should we burn the subtitle to the video?
-    subtitle_choice = None
-    while True:
-        user_input_subtitle_burn = str(input('# Burn the text subtitles to the video? (Y/n)\n'))
-        if user_input_subtitle_burn.strip().lower() in ('', 'y'):
-            while True:
-                user_input_int_or_ext_subtitle = str(input(
-                    '# Burn internal or external subtitles? \n  1. Internal\n  2. External\n'
-                    ))
-                if user_input_int_or_ext_subtitle.strip() == '2':
-                    subtitle_choice = 'ext'
-                    break
-                elif user_input_int_or_ext_subtitle.strip() == '1':
-                    while True:
-                        user_input_int_subtitle_index = str(input(
-                        '# Enter the number of subtitle track, the first track will be 0:\n'
-                        ))
-                        try:
-                            subtitle_choice = int(user_input_int_subtitle_index.strip())
-                            break
-                        except:
-                            print('# Invalid input!')
-                else:
-                    print('# Invalid input!')
-                if subtitle_choice is not None:
-                    break
-            break
-        elif user_input_subtitle_burn.strip().lower() == 'n':
-            break
-        else:
-            print('# Invalid input!')
+    should_burn_subtitle = _prompt_yes_no('Burn the text subtitles to the video?')
+    if should_burn_subtitle:
+        subtitle_choice = 'ext' if _prompt_choice(
+            'Burn internal or external subtitles?',
+            ('Internal', 'External')
+            ) == 'External' else 'int'
+        if subtitle_choice == 'int':
+            subtitle_choice = int(
+                _prompt_input(
+                    'Enter the number of subtitle track, the first track will be 0:',
+                    lambda x:  x.isdigit()
+                    )
+                )
+    else:
+        subtitle_choice = None
+
     # Overwrite existing files in the output directory?
-    overwrite_output = False
-    while True:
-        user_input_overwrite = str(input('# Overwrite existing files in the output directory? (y/N)\n'))
-        if user_input_overwrite.strip().lower() == 'y':
-            overwrite_output = True
-            break
-        elif user_input_overwrite.strip().lower() in ('', 'n'):
-            break
-        else:
-            print('# Invalid input!')
+    overwrite_output = _prompt_yes_no('Overwrite existing files in the output directory?', default=False)
+
     return v_bitrate, should_crop, subtitle_choice, overwrite_output
 
 def probe_source(source):
@@ -256,17 +296,30 @@ def get_output_dir():
     Returns:
         str: The validated output directory path.
     """
-    while True:
-        output_dir = str(input('# Enter the path of the output directory:\n'))
-        output_path = Path(output_dir.strip())
+    def validate_output_path(output_path):
+        """
+        Validate the output path. Will create the folder if the output path doesn't exist but its parent does.
+
+        Args:
+            output_path (str): The output path
+
+        Raises:
+            Exception: When neither given path and the parent of the given path exists
+
+        Returns:
+            bool: True for valid path.
+        """
+        output_path = Path(output_path)
         if output_path.is_dir():
-            return output_path
+            return True
         else:
             try:
                 output_path.mkdir(parents=False, exist_ok=True)
-                return output_path
+                return True
             except:
-                print('# Path doesn\'t exist, try again.')
+                raise Exception("Path doesn\'t exist, try again!")
+        
+    return _prompt_input('Enter the path of the output directory:', validate_output_path)
 
 def convert(source, v_bitrate, crop, subtitle, resolution, output, progress_msg):
     """
