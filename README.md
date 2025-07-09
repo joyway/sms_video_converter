@@ -12,6 +12,7 @@ This was inspired by following Reddit posts:
 
 - 🔍 Automatically detects video resolution and internal subtitle tracks
 - ✂️ Optionally crops widescreen videos to 4:3
+- 🔊 Select audio track
 - 💬 Burn subtitles into video:
   - Internal (by subtitle stream index)
   - External (`.srt` / `.ass`) auto-detected from filename
@@ -37,6 +38,7 @@ This was inspired by following Reddit posts:
     - Enter the output directory
     - Set the video bitrate
     - Choose cropping option (yes/no)
+    - Choose the audio track
     - Choose subtitle burning option from:
         - None
         - Internal (by stream index)
@@ -48,7 +50,7 @@ This was inspired by following Reddit posts:
 ## 📁 Supported Formats
 
 - Input Video Extensions: `.mkv`, `.mp4`, `.avi`, `.rmvb`, `.rm`, `.mov`, `.flv`, `.mpg`, `.mpeg`, `.wmv`
-- External Subtitle Extensions: `.srt`, `.ass`
+- External Subtitle Extensions: `.srt`, `.ssa`, `.ass`
 
 
 ## 📦 Output Details
@@ -67,14 +69,16 @@ This was inspired by following Reddit posts:
 ```
 ## Welcome to SMS Video Converter v1.0! ##
 # Enter the path of the source video file or directory:
-D:\Videos\DEATH NOTE
+D:\Videos\someanime
 # Scanning... Done
 # Enter the path of the output directory:
-D:\Videos\DEATH NOTE\output
+D:\Videos\someanime\output
 # Please set the video bitrate, numbers only: (1000-9000 kbps):
 2500
 # Crop the widescreen video to 4:3? (y/N)
 y
+# Enter the index of audio track, the first track will be 0:
+0
 # Burn the text subtitles to the video? (Y/n)
 y
 # Burn internal or external subtitles?
