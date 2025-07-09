@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 from subprocess import Popen, PIPE
 
-VERSION = '1.0.1'
+VERSION = '1.1.1'
 WELCOME_MSG = f'## Welcome to SMS Video Converter v{VERSION}! ##'
 VIDEO_EXTS = ('.mkv', '.mp4', '.avi', '.rmvb', '.rm', '.mov', '.flv', '.mpg', '.mpeg', '.wmv')
 SUBTITLE_EXTS = ('.ass', '.ssa', '.srt')
@@ -225,7 +225,7 @@ def has_external_subtitle(base_dir, source):
         each_ext = each_ext.lower()
         source_name = os.path.splitext(source)[0]
         if (each_ext in SUBTITLE_EXTS) and (source_name in each_name):
-            subtitle_cmd = f'subtitles={os.path.basename(each_file)}'
+            subtitle_cmd = f'subtitles=\'{os.path.basename(each_file)}\''
             break
     return subtitle_cmd
 
@@ -245,7 +245,7 @@ def has_internal_subtitle(source, subtitle_streams, subtitle_choice):
     subtitle_cmd = None
     try:
         subtitle_streams[subtitle_choice]
-        subtitle_cmd = f'subtitles={source}:si={subtitle_choice}'
+        subtitle_cmd = f'subtitles=\'{source}\':si={subtitle_choice}'
     except IndexError:
         print(f'# Subtitle stream {subtitle_choice} not found')
     return subtitle_cmd
