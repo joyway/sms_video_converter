@@ -96,7 +96,11 @@ def get_options():
     Interacts with the user to collect preferences.
 
     Returns:
-        tuple: Options for bitrate, video cropping, subtitle burning and overwrite existing files
+        - v_bitrate (str): Video bitrate.
+        - should_crop (bool): Crop 16:9 video to 4:3.
+        - audio_choice (int): Audio track index.
+        - subtitle_choice (None, int, str): Subtitle burn in options, integer for using internal subtitle index, 'ext' for external subtitle file
+        - overwrite_output (bool): Ovewrite output file if exists.
     """
     # What's the target video bitrate?
     validate_vbitrate = lambda x: VIDEO_BITRATE_RANGE[0] <= int(x) <= VIDEO_BITRATE_RANGE[1]
@@ -108,7 +112,16 @@ def get_options():
 
     # Should we crop the video to 4 by 3?
     should_crop = _prompt_yes_no('Crop the widescreen video to 4:3?', default=False)
-
+    
+    # Choose audio track index
+    audio_choice = 0
+    audio_choice = int(
+        _prompt_input(
+            'Enter the index of audio track, the first track will be 0:',
+            lambda x:  x.isdigit()
+            )
+        )
+    
     # Should we burn the subtitle to the video?
     should_burn_subtitle = _prompt_yes_no('Burn the text subtitles to the video?')
     if should_burn_subtitle:
@@ -119,7 +132,7 @@ def get_options():
         if subtitle_choice == 'int':
             subtitle_choice = int(
                 _prompt_input(
-                    'Enter the number of subtitle track, the first track will be 0:',
+                    'Enter the index of subtitle track, the first track will be 0:',
                     lambda x:  x.isdigit()
                     )
                 )
@@ -129,11 +142,11 @@ def get_options():
     # Overwrite existing files in the output directory?
     overwrite_output = _prompt_yes_no('Overwrite existing files in the output directory?', default=False)
 
-    return v_bitrate, should_crop, subtitle_choice, overwrite_output
+    return v_bitrate, should_crop, audio_choice, subtitle_choice, overwrite_output
 
 def probe_source(source):
     """
-    Probes a video file to extract resolution and subtitle stream info.
+    Probes a video file to extract resolution, audio and subtitle stream info.
 
     Args:
         source (str): Filename of the source video.
@@ -141,6 +154,7 @@ def probe_source(source):
     Returns:
         tuple:
             - resolution (dict): A dictionary containing the 'width' and 'height' of the first video stream
+            - audios (list): A list of audio streams
             - subtitles (list): A list of subtitle streams
     """
     # Probing the resolution
@@ -158,6 +172,23 @@ def probe_source(source):
         ]
     probe_proc = Popen(probe_resolution_cmd, stdout=PIPE)
     resolution = json.loads(probe_proc.communicate()[0].decode("utf-8"))['streams'][0]
+    
+    # Probing audio tracks
+    probe_audio_cmd = [
+        'ffprobe',
+        '-v',
+        'error',
+        '-select_streams',
+        'a',
+        '-show_entries',
+        'stream=index',
+        '-of',
+        'json',
+        source
+        ]
+    probe_proc = Popen(probe_audio_cmd, stdout=PIPE)
+    audios = json.loads(probe_proc.communicate()[0].decode("utf-8"))['streams']
+    
     # Probing subtitle streams
     probe_subtitle_cmd = [
         'ffprobe',
@@ -173,7 +204,7 @@ def probe_source(source):
         ]
     probe_proc = Popen(probe_subtitle_cmd, stdout=PIPE)
     subtitles = json.loads(probe_proc.communicate()[0].decode("utf-8"))['streams']
-    return resolution, subtitles
+    return resolution, audios, subtitles
     
 def has_external_subtitle(base_dir, source):
     """
@@ -232,7 +263,6 @@ def calculate_cropping(resolution):
     output_width = int((resolution['height'] / 3) * 4)
     cropped_width = int((resolution['width'] - output_width) / 2)
     return f'crop={output_width}:{resolution['height']}:{cropped_width}:0'
-    
 
 def get_sources():
     """
@@ -252,7 +282,8 @@ def get_sources():
                 - 'video' (str): The video filename.
                 - 'ratio' (float): The aspect ratio (height / width).
                 - 'crop_cmd' (str): The crop command string.
-                - 'subtitles' (list): Subtitle stream information from ffprobe.
+                - 'audios' (list): Audio stream info from ffprobe.
+                - 'subtitles' (list): Subtitle stream info from ffprobe.
     """
 
     while True:
@@ -276,11 +307,12 @@ def get_sources():
             each_name, each_ext = os.path.splitext(each_file)
             each_ext = each_ext.lower()
             if each_ext in VIDEO_EXTS:
-                resolution, subtitles = probe_source(each_file)
+                resolution, audios, subtitles = probe_source(each_file)
                 source_list.append({
                     'video': os.path.basename(each_file),
                     'ratio': resolution['height'] / resolution['width'],
                     'crop_cmd': calculate_cropping(resolution),
+                    'audios': audios,
                     'subtitles': subtitles
                     })
         print('\r# Scanning... Done')
@@ -321,7 +353,7 @@ def get_output_dir():
         
     return _prompt_input('Enter the path of the output directory:', validate_output_path)
 
-def convert(source, v_bitrate, crop, subtitle, resolution, output, progress_msg):
+def convert(source, v_bitrate, crop, audio_stream, subtitle, resolution, output, progress_msg):
     """
     Converts a video file using ffmpeg with optional cropping and subtitle burning.
 
@@ -329,6 +361,7 @@ def convert(source, v_bitrate, crop, subtitle, resolution, output, progress_msg)
         source (str): Filename of the source video.
         v_bitrate (str): Video bitrate.
         crop (str or None): FFmpeg crop filter string, or None if no cropping is needed.
+        audio_stream (int): The index of audio stream.
         subtitle (str or None): FFmpeg subtitle filter string, or None if no subtitles are to be burned.
         resolution (str): Output video resolution in format 'widthxheight' (e.g., '640x480').
         output (str): Path for the output video file.
@@ -352,6 +385,10 @@ def convert(source, v_bitrate, crop, subtitle, resolution, output, progress_msg)
         v_bitrate, # Constant video bitrate
         '-b:a',
         AUDIO_BITRATE, # Constant audio bitrate
+        '-map',
+        '0:v:0',
+        '-map',
+        f'0:a:{audio_stream}',
         '-s',
         resolution,
         ]
@@ -412,7 +449,8 @@ def main():
     print(WELCOME_MSG)
     base_dir, source_list = get_sources()
     output_dir = get_output_dir()
-    v_bitrate, should_crop, subtitle_choice, overwrite_output = get_options()
+    v_bitrate, should_crop, audio_choice, subtitle_choice, overwrite_output = get_options()
+    print(audio_choice)
 
     count = 1
     count_padding = len(str(len(source_list)))
@@ -435,6 +473,12 @@ def main():
             resolution = RESOLUTION_4BY3 # Force resolution to 4:3 when enable cropping
         if each_source['ratio'] >= 0.7:
             resolution = RESOLUTION_4BY3
+        try:
+            each_source['audios'][audio_choice]
+            audio = audio_choice
+        except:
+            print(f'{progress_msg} Skipped, audio stream {audio_choice} doesn\'t exist!')
+            continue
 
         subtitle = None
         if subtitle_choice is not None:
@@ -447,7 +491,7 @@ def main():
                 if int_sub_cmd:
                     subtitle = int_sub_cmd
 
-        convert(each_source['video'], v_bitrate, crop, subtitle, resolution, output, progress_msg)
+        convert(each_source['video'], v_bitrate, crop, audio, subtitle, resolution, output, progress_msg)
         print(f'{progress_msg} Completed')
         count += 1
 
